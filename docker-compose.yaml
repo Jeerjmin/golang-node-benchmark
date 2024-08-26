@@ -1,0 +1,87 @@
+version: '3.8'
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "6060:6060"
+    environment:
+      POSTGRESQL_USER: ${POSTGRESQL_USER}
+      POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD}
+      POSTGRESQL_HOST: ${POSTGRESQL_HOST}
+      POSTGRESQL_PORT: ${POSTGRESQL_PORT}
+      POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE}
+      PORT: 8080
+    container_name: my-gin-container
+    restart: always
+    depends_on:
+      - db
+    deploy:
+      resources:
+        limits:
+          memory: 1G   
+          cpus: "1.0"
+
+
+  node-web:
+    build:
+      context: ./node_test
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    volumes:
+      - ./node_test:/app
+      - /app/node_modules
+    command: npm start
+    depends_on:
+      - db
+    deploy:
+      resources:
+        limits:
+          memory: 1G   
+          cpus: "1.0"
+
+  
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRESQL_USER}
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD}
+      POSTGRES_DB: ${POSTGRESQL_DATABASE}
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    command: >
+      postgres -c shared_preload_libraries=pg_stat_statements
+    ports:
+      - 5432:5432
+    deploy:
+      resources:
+        limits:
+          memory: 1G          
+          cpus: "2.0"     
+
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "4000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+
+volumes:
+  grafana-data:
+  prometheus-data:
